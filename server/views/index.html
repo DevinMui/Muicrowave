@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+    <title>μ🥝</title>
+
+    <link rel="stylesheet" href="./vex.css" />
+    <link rel="stylesheet" href="./vex-theme-os.css" />
+
+    <link rel="stylesheet" href="./loader.css">
+    <link rel="stylesheet" href="./picker.css">
+</head>
+<style>
+    .vex-content {
+        border-top: 0 !important;
+        max-width: 95% !important
+    }
+
+    video {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        object-fit: cover
+    }
+
+    body *,
+    html * {
+        user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select: none;
+        -webkit-touch-callout: none;
+        -o-user-select: none;
+        -moz-user-select: none;
+        transition: 0.25s all;
+    }
+
+    body,
+    html {
+        overflow-y: hidden;
+        margin: 0;
+        padding: 0;
+        text-align: center;
+        height: 100%;
+        width: 100%;
+        font-family: 'Montserrat', sans-serif;
+    }
+    #main {
+        height: 100%;
+    }
+    #buttons-outer * {
+        padding: 1rem;
+    }
+
+    #buttons-outer {
+        position: fixed;
+        bottom: 0;
+        margin: 3%;
+        border: 1px solid powderblue;
+        border-radius: 8px;
+        cursor: pointer;
+        width: 94%;
+        background: rgba(255, 255, 255, 0.95);
+    }
+    .hidden {
+        display: none;
+    }
+</style>
+
+<body>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+        crossorigin="anonymous"></script>
+    <script src="./loader.js"></script>
+    <script src="./smooth.js"></script>
+    <div style="position: fixed; background: black; color: white; top: 0; left: 0; padding: 1rem;"> Calories: <span id="cal-span">0</span></div>
+    <input type="text" class="form-control js-time-picker" style="display: none" value="00:00">
+    <div id="main">
+        <video id="video" autoplay></video>
+        <div id="buttons-outer">
+            <div id="microwave-name" style="border-bottom:1px solid rgba(25, 25, 25, 0.25)"><b>Sanyo EM-S7560W</b></div>
+            <div id="loader">
+                <div id="time">Select time</div>
+                <div id="use-picture">Use picture</div>
+            </div>
+        </div>
+        <canvas style="display:hidden" id="cancan"></canvas>
+    </div>
+    <script src="./picker.js"></script>
+    <script src="./vex.combined.min.js"></script>
+    <script>vex.defaultOptions.className = 'vex-theme-os'</script>
+
+    <script>
+        function takepicture() {
+            let canvas = document.getElementById('cancan')
+            var context = canvas.getContext('2d');
+            canvas.setAttribute('width', 240);
+            canvas.setAttribute('height', 300);
+            context.drawImage(video, 0, 0, 240, 300);
+            return (canvas.toDataURL('image/png'))
+        }
+
+        $(function () {
+            $('#main').smoothState();
+        })
+        setInterval(function(){
+            $.get('./calories').done(function(data){
+                $('#cal-span').text(data.calories)
+            })
+        }, 2500)
+        vex.dialog.buttons.YES.text = 'Yes'
+        vex.dialog.buttons.NO.text = 'No'
+        $('#use-picture').click(function () {
+            let b64image = takepicture()
+            $('body').loading('toggle')
+            $.ajax('./image-recognition', {
+                data: JSON.stringify({ image: b64image }),
+                contentType: 'application/json',
+                type: 'POST'
+            })
+                // $.post('./image-recognition')
+                .done(function (data) {
+                    $('body').loading('toggle')
+                    let factor = new Date().getHours() < 13 && new Date().getHours() >= 11 ? 1 : 0.5
+                    if (data.time)
+                        vex.dialog.confirm({
+                            message: `Heating up this ${data.name} will take ${data.time * 30} seconds and cost $${data.time * factor.toFixed(2)}. Do you want to pay now?`,
+                            callback: function (value) {
+                                if (value) {
+                                    window.location.href = `./creditcard.html#${data.time * 30}/${data.time * factor.toFixed(2)}`
+                                } else {
+                                    console.log('Chicken.')
+                                }
+                            }
+                        })
+                    else
+                        vex.dialog.alert("We advise not microwaving this item but you can manually set the time below.")
+                }).fail(function (data) {
+                    $('body').loading('toggle')
+                    vex.dialog.alert(`We couldn't recognize that food... yet.`)
+                })
+        })
+
+        let picker = new Picker(document.querySelector('.js-time-picker'), {
+            format: 'mm:ss',
+            headers: true,
+            increment: { second: 30 },
+            text: {
+                title: 'Select time',
+            },
+        });
+        picker.pick = function () {
+
+            picker.hide()
+            let amount = picker.data.minute.current * 60 + picker.data.second.current
+            let factor = new Date().getHours() < 13 && new Date().getHours() >= 11 ? 1 : 0.5
+            vex.dialog.confirm({
+                message: `${amount} seconds will cost $${(amount * factor).toFixed(2)}. Do you want to pay now?`,
+                callback: function (value) {
+                    if (value) {
+                        window.location.href = `./creditcard.html#${amount}/${amount * factor.toFixed(2)}`
+                    } else {
+                        console.log('Chicken.')
+                    }
+                }
+            })
+
+        }
+        $('#time').click(function () {
+            $('.js-time-picker').click()
+        })
+
+        var video = document.getElementById('video');
+        navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: "environment",
+            }
+        })
+            .then(function (stream) {
+                video.srcObject = stream;
+                video.play()
+            })
+        $('#loader').loading('toggle')
+        $.get('/s').done(function (res) {
+            setTimeout(function () {
+                $('#loader').loading('toggle')
+            }, 500)
+        }).fail(function () {
+            setTimeout(function () {
+                $('#loader').loading('toggle')
+                $('#loader').html(`Couldn't load microwave status :(`)
+            }, 500)
+        })
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1, user-scalable=0">
+    <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS"
+        crossorigin="anonymous">
+
+    <title>Enter Credit Card Info</title>
+    <style>
+        textarea:focus, input, input:focus{
+    outline: none;
+    border: 0;
+    border-bottom: 1px solid black;
+    margin-bottom: 12px;
+    width: 100%;
+}
+        html * {
+            overflow: hidden;
+            transition: 0.25s all;
+        }
+        .jp-card-container {
+            margin: 0 auto;
+        }
+        body {
+            margin: 0;
+            font-family: "Montserrat", sans-serif;
+            width: 100%;
+        }
+
+        p {
+            font-size: 1.2rem
+        }
+        .card-wrapper {
+            margin-left: -1rem; margin-right: -1rem
+        }
+        #continue {
+            width: 94%;
+            display: flex;
+            text-align: center;
+            justify-content: center;
+            padding: 1rem;
+            border: 2px solid lightgreen;
+            border-radius: 8px;
+            cursor: pointer;
+            box-sizing: border-box;
+            margin: 3%
+        }
+        #continue:hover {
+            color: white;
+            border: 2px solid white;
+            background: lightgreen
+        }
+    </style>
+    <link rel="stylesheet" href="./form.css">
+
+    <link rel="stylesheet" href="./cc.css">
+    <link rel="stylesheet" href="./loader.css">
+
+</head>
+
+<body>
+    <div style="max-width: 800px; margin: 0 auto; padding: 1rem">
+        <h1>Credit Card Info</h1>
+        <p>Paying $<span id="dollars"></span> to use <b>Sanyo EM-S7560W</b> for <span id="time"></span> seconds.</p>
+        <br>
+        <form action="">
+            <input placeholder="Card number" type="tel" name="number">
+            <input placeholder="Full name" type="text" name="name">
+            <input placeholder="MM/YY" type="tel" name="expiry">
+            <input placeholder="CVC" type="tel" name="cvc">
+        </form>
+
+    </div>
+    <div class="card-wrapper"></div>
+    <div id="continue">
+            Continue
+        </div>
+    
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+        crossorigin="anonymous"></script>
+    <script src="./cc.js"></script>
+    <script src="./form.js"></script>
+
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js" integrity="sha384-B0UglyR+jN6CkvvICOB2joaf5I4l3gm9GU6Hc1og6Ls7i6U/mkkaduKaBhlAXv9k"
+        crossorigin="anonymous"></script>
+    <script src="loader.js"></script>
+
+    <script>
+        const a = window.location.hash.split('#')[1].split('/')
+
+        $(function () {
+
+            $('#continue').click(function () {
+                $('body').loading('toggle')
+                let infoSelectors = [
+                    'number', 'name', 'expiry', 'cvc'
+                ]
+                let b = {}
+                infoSelectors.map(i => {
+                    console.log($(`input[name=${i}]`).val())
+                    b[i] = $(`input[name=${i}]`).val()
+                })
+                b.cash = window.location.hash.split('#')[1].split('/')[1]
+                $.ajax('./cc', {
+                    data: JSON.stringify(b),
+                    contentType: 'application/json',
+                    type: 'POST'
+                }).done(function(){
+                    $('body').loading('toggle')
+
+                    window.location.href = './success.html'
+                }).fail(function(){
+                    $('body').loading('toggle')
+
+                    window.location.href = './fail.html'
+                })
+            })
+            var card = new Card({
+                // a selector or DOM element for the form where users will
+                // be entering their information
+                form: document.querySelector('form'), // *required*
+                // a selector or DOM element for the container
+                // where you want the card to appear
+                container: document.querySelector('.card-wrapper'), // *required*
+
+
+                width: (window.innerWidth * 0.9 > 800 ? 600 : window.innerWidth * 0.8), // optional — default 350px
+
+                // if true, will log helpful messages for setting up Card
+                debug: true // optional - default false
+            });
+            let [time, cash] = [a[0], a[1]]
+            $('#dollars').text(cash)
+            $('#time').text(time)
+        })
+        window.onhashchange = function () {
+            let a = window.location.hash.split('#')[1].split('/')
+            let [time, cash] = [a[0], a[1]]
+            $('#dollars').text(cash)
+            $('#time').text(time)
+
+        }
+    </script>
+</body>
+
+</html>
